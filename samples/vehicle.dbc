@@ -1,0 +1,33 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: ECU
+
+BO_ 256 VehicleSpeed: 8 ECU
+
+SG_ Speed_kmh : 0|16@1+ (0.1,0) [0|250] "km/h" Vector__XXX
+
+BO_ 272 WheelSpeed: 8 ECU
+
+SG_ WheelSpeed_kmh : 0|16@1+ (0.1,0) [0|250] "km/h" Vector__XXX
+
+BO_ 512 EngineStatus: 8 ECU
+
+SG_ RPM : 0|16@1+ (1,0) [0|8000] "rpm" Vector__XXX
+
+SG_ CoolantTemp_C : 16|8@1+ (1,-40) [-40|215] "C" Vector__XXX
+
+BO_ 768 BrakeStatus: 8 ECU
+
+SG_ BrakePressure_pct : 0|8@1+ (1,0) [0|100] "%" Vector__XXX
+
+SG_ ABS_Active : 8|1@1+ (1,0) [0|1] "" Vector__XXX
+
+BO_ 1024 GearStatus: 8 ECU
+
+SG_ GearPosition : 0|4@1+ (1,0) [0|3] "" Vector__XXX
+
+VAL_ 1024 GearPosition 3 "D" 2 "N" 1 "R" 0 "P" ;
