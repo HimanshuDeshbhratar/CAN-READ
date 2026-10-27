@@ -1,1 +1,9 @@
 node_modules/
+coverage/
+dist/
+*.log.tmp
+
+# Local environment files and secrets. .env.example is the committed template.
+.env
+.env.*
+!.env.example
