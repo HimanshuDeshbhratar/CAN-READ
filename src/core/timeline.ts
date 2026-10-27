@@ -180,7 +180,14 @@ function buildEntry(bucket: EpisodeBucket, index: number, maxFacts: number): Tim
   );
 
   const eventTitles = bucket.events.map((event) => event.title);
-  const summary = `Theme "${THEME_TITLES[bucket.theme]}", from t=${formatTime(bucket.startTime)} s to t=${formatTime(bucket.endTime)} s: ${eventTitles.join("; ")}.`;
+  const rangeText =
+    bucket.startTime === bucket.endTime
+      ? `at t=${formatTime(bucket.startTime)} s`
+      : `from t=${formatTime(bucket.startTime)} s to ${formatTime(bucket.endTime)} s`;
+  const summary =
+    bucket.events.length === 1
+      ? `Detected ${rangeText}.`
+      : `${bucket.events.length} related detections ${rangeText}: ${eventTitles.join("; ")}.`;
 
   return {
     id: entryId(bucket.theme, index),
@@ -229,7 +236,7 @@ export function buildTimeline(
   const summary =
     entries.length === 0
       ? "No events were detected in this log."
-      : `Timeline covers t=${formatTime(startTime)} s to t=${formatTime(endTime)} s with ${entries.length} episode(s): ${entries
+      : `Timeline covers t=${formatTime(startTime)} s to t=${formatTime(endTime)} s with ${entries.length} ${entries.length === 1 ? "episode" : "episodes"}: ${entries
           .map(
             (entry) =>
               `${entry.title} (${formatTime(entry.startTime)}-${formatTime(entry.endTime)} s)`,

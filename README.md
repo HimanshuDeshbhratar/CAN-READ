@@ -118,8 +118,10 @@ Definitions are validated for IDs, DLC, bit ranges, length, factor, numeric valu
 
 - CAN log: 32 MiB
 - DBC: 4 MiB
+- candump parser: 500,000 lines and 1,000 retained parse warnings
+- decoder: up to 100 retained frame warnings plus a suppression note
 - JSON request body: 40 MiB
-- Two uploaded files, 60-second request timeout
+- Two uploaded files, 90-second request timeout
 - Uploads are processed in memory and never stored on disk or executed.
 - Analysis references are kept in memory for 10 minutes, capped at 50 entries.
 - The API does not accept filesystem paths, so arbitrary server files cannot be read.
@@ -151,6 +153,8 @@ Timeline entries keep:
 - `limitations` — what the signals cannot establish
 
 A rapid speed reduction is labeled **Rapid deceleration** unless brake evidence is present, in which case it becomes **Possible hard braking**. Correlation is treated as supporting evidence, not proof of driver intent, road conditions, or a fault.
+
+Confidence values shown in the dashboard are heuristic detector scores used for ranking and traceability. They are not calibrated probabilities.
 
 ## AI narration
 
@@ -286,7 +290,7 @@ samples/                   DBC and generated demo log
 - Dropout and traffic baselines are inferred from the log unless configured; event-driven messages can look like dropouts.
 - Timeline correlation is temporal and thematic, not causal.
 - The LLM narrative can still be wrong or overly confident; the deterministic analysis and fallback remain authoritative.
-- No authentication, multi-user isolation, database, or persistent analysis storage in this MVP.
+- No authentication, rate limiting, multi-user isolation, database, or persistent analysis storage in this MVP.
 - Not tested against every candump variant or every DBC dialect.
 
 ## Safety and interpretation

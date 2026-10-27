@@ -53,8 +53,14 @@ export function EvidencePanel({ event, entry }: EvidencePanelProps) {
           <h3>{event.title}</h3>
           <p className="muted">
             {eventTypeLabel(event.type)} · {formatRange(event.startTime, event.endTime)}
-            {confidence ? ` · confidence ${confidence}` : ""}
+            {confidence ? ` · detector confidence ${confidence}` : ""}
           </p>
+          {confidence && (
+            <p className="confidence-note">
+              Confidence is a heuristic detector score, not a calibrated
+              probability.
+            </p>
+          )}
         </div>
         <code>{event.type}</code>
       </div>

@@ -24,7 +24,7 @@ export interface AnalysisLimits {
 export const DEFAULT_ANALYSIS_LIMITS: AnalysisLimits = {
   maxLogBytes: 32 * 1024 * 1024,
   maxDbcBytes: 4 * 1024 * 1024,
-  candump: {},
+  candump: { maxInputChars: 32 * 1024 * 1024 },
 };
 
 export interface SignalMetadata {
@@ -112,6 +112,10 @@ export class AnalysisError extends Error {
 
 function byteLength(text: string): number {
   return Buffer.byteLength(text, "utf8");
+}
+
+function stripBom(text: string): string {
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }
 
 function collectSignals(
@@ -229,21 +233,25 @@ export function analyze(input: AnalysisRequest): AnalysisResult {
     );
   }
 
-  if (byteLength(input.logText) > limits.maxLogBytes) {
+  const logText = stripBom(input.logText);
+  const dbcText =
+    input.dbcText === undefined ? undefined : stripBom(input.dbcText);
+
+  if (byteLength(logText) > limits.maxLogBytes) {
     throw new AnalysisError(
       "log_too_large",
       `The CAN log exceeds the maximum size of ${limits.maxLogBytes} bytes.`,
     );
   }
 
-  if (input.dbcText !== undefined) {
-    if (input.dbcText.trim() === "") {
+  if (dbcText !== undefined) {
+    if (dbcText.trim() === "") {
       throw new AnalysisError(
         "empty_dbc",
         "The DBC file was provided but is empty.",
       );
     }
-    if (byteLength(input.dbcText) > limits.maxDbcBytes) {
+    if (byteLength(dbcText) > limits.maxDbcBytes) {
       throw new AnalysisError(
         "dbc_too_large",
         `The DBC file exceeds the maximum size of ${limits.maxDbcBytes} bytes.`,
@@ -253,7 +261,7 @@ export function analyze(input: AnalysisRequest): AnalysisResult {
 
   let dbc: Dbc;
   try {
-    dbc = parseDbc(input.dbcText ?? "");
+    dbc = parseDbc(dbcText ?? "");
   } catch (error) {
     throw new AnalysisError(
       "invalid_dbc",
@@ -262,7 +270,7 @@ export function analyze(input: AnalysisRequest): AnalysisResult {
     );
   }
 
-  const parsed = parseCandump(input.logText, limits.candump);
+  const parsed = parseCandump(logText, limits.candump);
 
   if (parsed.frames.length === 0) {
     throw new AnalysisError(

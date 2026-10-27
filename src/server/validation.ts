@@ -35,17 +35,24 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function isStringOfLength(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" && value.length <= maxLength;
+}
+
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) &&
+    value.every((item) => isStringOfLength(item, 5000))
+  );
 }
 
 const SEVERITIES = new Set(["info", "warning", "critical"]);
 
 function isSignalMetadata(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (typeof value["messageName"] !== "string") return false;
-  if (typeof value["signalName"] !== "string") return false;
-  if (typeof value["unit"] !== "string") return false;
+  if (!isStringOfLength(value["messageName"], 512)) return false;
+  if (!isStringOfLength(value["signalName"], 512)) return false;
+  if (!isStringOfLength(value["unit"], 128)) return false;
   if (!isFiniteNumber(value["messageId"])) return false;
   if (!isFiniteNumber(value["dlc"])) return false;
   if (!isFiniteNumber(value["factor"])) return false;
@@ -62,7 +69,7 @@ function isSignalMetadata(value: unknown): boolean {
 
 function isEvidence(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (typeof value["signalName"] !== "string") return false;
+  if (!isStringOfLength(value["signalName"], 512)) return false;
   if (!isFiniteNumber(value["timestamp"])) return false;
   const evidenceValue = value["value"];
   if (typeof evidenceValue !== "number" && typeof evidenceValue !== "string") {
@@ -71,8 +78,8 @@ function isEvidence(value: unknown): boolean {
   if (typeof evidenceValue === "number" && !Number.isFinite(evidenceValue)) {
     return false;
   }
-  if (typeof value["description"] !== "string") return false;
-  if (value["unit"] !== undefined && typeof value["unit"] !== "string") {
+  if (!isStringOfLength(value["description"], 5000)) return false;
+  if (value["unit"] !== undefined && !isStringOfLength(value["unit"], 128)) {
     return false;
   }
   return true;
@@ -80,10 +87,10 @@ function isEvidence(value: unknown): boolean {
 
 function isEvent(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (typeof value["id"] !== "string") return false;
-  if (typeof value["type"] !== "string") return false;
-  if (typeof value["title"] !== "string") return false;
-  if (typeof value["summary"] !== "string") return false;
+  if (!isStringOfLength(value["id"], 512)) return false;
+  if (!isStringOfLength(value["type"], 128)) return false;
+  if (!isStringOfLength(value["title"], 5000)) return false;
+  if (!isStringOfLength(value["summary"], 5000)) return false;
   if (
     typeof value["severity"] !== "string" ||
     !SEVERITIES.has(value["severity"])
@@ -109,10 +116,10 @@ function isEvent(value: unknown): boolean {
 
 function isTimelineEntry(value: unknown): boolean {
   if (!isRecord(value)) return false;
-  if (typeof value["id"] !== "string") return false;
-  if (typeof value["theme"] !== "string") return false;
-  if (typeof value["title"] !== "string") return false;
-  if (typeof value["summary"] !== "string") return false;
+  if (!isStringOfLength(value["id"], 512)) return false;
+  if (!isStringOfLength(value["theme"], 128)) return false;
+  if (!isStringOfLength(value["title"], 5000)) return false;
+  if (!isStringOfLength(value["summary"], 5000)) return false;
   if (
     typeof value["severity"] !== "string" ||
     !SEVERITIES.has(value["severity"])
@@ -135,7 +142,7 @@ function isTimeline(value: unknown): boolean {
   if (!isFiniteNumber(value["startTime"])) return false;
   if (!isFiniteNumber(value["endTime"])) return false;
   if (!isFiniteNumber(value["durationSec"])) return false;
-  if (typeof value["summary"] !== "string") return false;
+  if (!isStringOfLength(value["summary"], 5000)) return false;
   if (!Array.isArray(value["entries"])) return false;
   return value["entries"].every(isTimelineEntry);
 }

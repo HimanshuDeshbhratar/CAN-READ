@@ -83,7 +83,7 @@ describe("analysis API", () => {
     expect(response.statusCode).toBe(200);
 
     const body = response.json();
-    expect(body.analysisId).toBeTruthy();
+    expect(body.analysisId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(body.events).toHaveLength(5);
     expect(body.timeline.entries).toHaveLength(3);
     expect(body.unknownIds).toEqual([]);
@@ -157,6 +157,35 @@ describe("analysis API", () => {
       {
         name: "config",
         value: JSON.stringify({ detectors: { traffic: { windowSec: 0 } } }),
+      },
+    ]);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/analyze",
+      headers: {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+      payload,
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("invalid_config");
+    expect(response.json().error.details).toContain(
+      "config.traffic.windowSec: must be greater than 0.",
+    );
+  });
+
+  it("accepts a BOM-prefixed config field and still validates its contents", async () => {
+    const boundary = "----bomconfig";
+    const payload = multipartBody(boundary, [
+      { name: "log", filename: "drive_demo.log", value: logText },
+      { name: "dbc", filename: "vehicle.dbc", value: dbcText },
+      {
+        name: "config",
+        value:
+          "\uFEFF" +
+          JSON.stringify({ detectors: { traffic: { windowSec: 0 } } }),
       },
     ]);
 
@@ -293,7 +322,7 @@ describe("analysis API", () => {
     const body = response.json();
     expect(body.mode).toBe("fallback");
     expect(body.provider).toBe("deterministic");
-    expect(body.report.overallSummary).toContain("event(s)");
+    expect(body.report.overallSummary).toContain("events were");
     expect(body.report.narrative.length).toBeGreaterThan(0);
   });
 
@@ -324,6 +353,24 @@ describe("analysis API", () => {
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe("invalid_analysis");
     expect(response.json().error.details.length).toBeGreaterThan(0);
+  });
+
+  it("rejects client-supplied analysis strings that exceed the size caps", async () => {
+    const analysisResponse = await app.inject({
+      method: "GET",
+      url: "/api/sample/analysis",
+    });
+    const analysis = structuredClone(analysisResponse.json());
+    analysis.events[0].summary = "x".repeat(5001);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/narrate",
+      payload: { analysis },
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.code).toBe("invalid_analysis");
   });
 
   it("returns 404 for an unknown stored analysis id", async () => {

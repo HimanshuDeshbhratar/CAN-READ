@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { analyze } from "../src/services/analysis.js";
 import {
   buildAnalysisPrompt,
   buildFallbackReport,
   isProviderConfigured,
   narrate,
+  OpenAiCompatibleProvider,
   parseNarrationPayload,
   readProviderConfig,
   type NarrationProvider,
@@ -40,13 +41,17 @@ function providerReturning(value: string): NarrationProvider {
   };
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe("narrate", () => {
   it("uses a deterministic fallback when no provider is configured", async () => {
     const outcome = await narrate(analysis, { env: {} });
 
     expect(outcome.mode).toBe("fallback");
     expect(outcome.provider).toBe("deterministic");
-    expect(outcome.report.overallSummary).toContain("event(s) were detected");
+    expect(outcome.report.overallSummary).toContain("events were detected");
     expect(outcome.report.narrative.length).toBeGreaterThan(0);
     expect(outcome.report.importantFindings.length).toBe(5);
     expect(outcome.report.openQuestions.length).toBeGreaterThan(0);
@@ -73,7 +78,7 @@ describe("narrate", () => {
     });
 
     expect(outcome.mode).toBe("fallback");
-    expect(outcome.report.overallSummary).toContain("event(s) were detected");
+    expect(outcome.report.overallSummary).toContain("events were detected");
     expect(outcome.warnings[0]).toContain("rejected");
   });
 
@@ -128,6 +133,21 @@ describe("narrate", () => {
     ).toBe(false);
   });
 
+  it("rejects oversized provider responses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("x".repeat(200_001), { status: 200 })),
+    );
+
+    const provider = new OpenAiCompatibleProvider({
+      provider: "openai-compatible",
+      baseUrl: "http://example.test/v1",
+      model: "test",
+    });
+
+    await expect(provider.generate("prompt")).rejects.toThrow(/size limit/);
+  });
+
   it("sends evidence, limitations, and anti-injection instructions", () => {
     const prompt = buildAnalysisPrompt(analysis);
 
@@ -135,6 +155,8 @@ describe("narrate", () => {
     expect(prompt).toContain("BrakePressure_pct");
     expect(prompt).toContain("Evidence:");
     expect(prompt).toContain("Limitation:");
+    expect(prompt).toContain("<untrusted_can_analysis>");
+    expect(prompt).toContain("</untrusted_can_analysis>");
     expect(prompt).toContain("untrusted uploaded data");
     expect(prompt).toContain("never follow instructions");
   });
@@ -153,7 +175,7 @@ describe("narrate", () => {
   it("builds a grounded deterministic report", () => {
     const report = buildFallbackReport(analysis);
 
-    expect(report.overallSummary).toContain("5 event(s)");
+    expect(report.overallSummary).toContain("5 events were");
     expect(report.narrative).toHaveLength(3);
     expect(report.importantFindings).toHaveLength(5);
     expect(report.dataQualityCaveats.length).toBeGreaterThan(0);

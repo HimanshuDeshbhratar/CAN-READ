@@ -239,7 +239,7 @@ export function SignalExplorer({
                       <ResponsiveContainer width="100%" height={230}>
                         <LineChart
                           data={data}
-                          margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+                          margin={{ top: 8, right: 18, bottom: 4, left: 10 }}
                         >
                           <CartesianGrid
                             strokeDasharray="3 3"
@@ -303,7 +303,7 @@ export function SignalExplorer({
                             name={series.signalName}
                             stroke={COLORS[index % COLORS.length] ?? "#5eead4"}
                             strokeWidth={2}
-                            dot={false}
+                            dot={series.points.length <= 2 ? { r: 3 } : false}
                             connectNulls={false}
                             isAnimationActive={false}
                           />

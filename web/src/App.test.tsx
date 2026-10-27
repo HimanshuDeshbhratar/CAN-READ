@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { analyze } from "../../src/services/analysis.js";
@@ -34,7 +39,24 @@ const narrationResponse = {
 };
 
 class ResizeObserverMock {
-  observe() {}
+  private readonly callback: (
+    entries: Array<{ target: Element; contentRect: { width: number; height: number } }>,
+    observer: unknown,
+  ) => void;
+
+  constructor(
+    callback: (
+      entries: Array<{ target: Element; contentRect: { width: number; height: number } }>,
+      observer: unknown,
+    ) => void,
+  ) {
+    this.callback = callback;
+  }
+
+  observe(target: Element) {
+    this.callback([{ target, contentRect: { width: 900, height: 300 } }], this);
+  }
+
   unobserve() {}
   disconnect() {}
 }
@@ -54,6 +76,17 @@ function urlOf(input: RequestInfo | URL): string {
 
 describe("demo workflow", () => {
   beforeEach(() => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 900,
+      height: 300,
+      top: 0,
+      left: 0,
+      right: 900,
+      bottom: 300,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
     vi.stubGlobal("ResizeObserver", ResizeObserverMock);
     vi.stubGlobal(
       "fetch",
@@ -81,12 +114,13 @@ describe("demo workflow", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
   it("loads the real sample analysis and displays its measurements", async () => {
     const user = userEvent.setup();
-    render(<App />);
+    const { container } = render(<App />);
 
     await user.click(
       screen.getByRole("button", { name: /try demo drive/i }),
@@ -98,6 +132,23 @@ describe("demo workflow", () => {
     expect(screen.getByText("Detected events")).toBeTruthy();
     expect(screen.getAllByText("Possible hard braking").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Possible telemetry dropout").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/decreased from 50.9 km\/h to 15 km\/h over/).length,
+    ).toBeGreaterThan(0);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(".chart-card").length).toBe(1);
+    });
+    await waitFor(() => {
+      expect(container.querySelectorAll(".recharts-surface").length).toBeGreaterThan(0);
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: /WheelSpeed_kmh/i }),
+    );
+    await waitFor(() => {
+      expect(container.querySelectorAll(".chart-card").length).toBe(2);
+    });
 
     expect(await screen.findByText("Deterministic fallback")).toBeTruthy();
     expect(screen.getByText("Observed facts (deterministic)")).toBeTruthy();
@@ -121,5 +172,9 @@ describe("demo workflow", () => {
     expect(screen.getAllByText("ABS_Active").length).toBeGreaterThan(0);
     expect(screen.getAllByText("41.00 s").length).toBeGreaterThan(0);
     expect(screen.getByText(/change into an ABS-active value/)).toBeTruthy();
+    expect(
+      screen.getByText(/Event focus: 41\.00–42\.55 s/),
+    ).toBeTruthy();
+    expect(screen.getByText(/heuristic detector score/)).toBeTruthy();
   });
 });

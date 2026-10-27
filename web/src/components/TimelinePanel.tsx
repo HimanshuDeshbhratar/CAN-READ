@@ -75,28 +75,44 @@ export function TimelinePanel({
                       className={`event-row${active ? " selected" : ""}`}
                       key={event.id}
                     >
-                      <button
-                        type="button"
-                        className="event-main"
-                        onClick={(clickEvent) => {
-                          clickEvent.stopPropagation();
-                          onSelectEvent(event, entry);
-                        }}
-                      >
-                        <span
-                          className={`severity-dot ${severityClass(event.severity)}`}
-                        />
-                        <span className="event-copy">
-                          <strong>{event.title}</strong>
-                          <small>
-                            {eventTypeLabel(event.type)} · {event.severity} ·{" "}
-                            {formatTime(event.startTime)}
-                          </small>
-                        </span>
-                        {confidence && (
-                          <span className="confidence">{confidence}</span>
-                        )}
-                      </button>
+                      <div className="event-body">
+                        <button
+                          type="button"
+                          className="event-main"
+                          onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            onSelectEvent(event, entry);
+                          }}
+                        >
+                          <span
+                            className={`severity-dot ${severityClass(event.severity)}`}
+                          />
+                          <span className="event-copy">
+                            <strong>{event.title}</strong>
+                            <small>
+                              {eventTypeLabel(event.type)} · {event.severity} ·{" "}
+                              {formatTime(event.startTime)}
+                            </small>
+                          </span>
+                          {confidence && (
+                            <span
+                              className="confidence"
+                              title="Heuristic detector confidence, not a calibrated probability"
+                            >
+                              {confidence}
+                            </span>
+                          )}
+                        </button>
+                        <p
+                          className="event-summary"
+                          onClick={(clickEvent) => {
+                            clickEvent.stopPropagation();
+                            onSelectEvent(event, entry);
+                          }}
+                        >
+                          {event.summary}
+                        </p>
+                      </div>
                       <button
                         type="button"
                         className="inspect"

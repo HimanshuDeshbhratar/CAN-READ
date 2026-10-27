@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,6 +43,7 @@ function resolveCorsOrigins(value: string | undefined): string | string[] {
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin !== "");
+  if (origins.length === 0) return "http://localhost:5173";
   return origins.length === 1 ? origins[0]! : origins;
 }
 
@@ -90,7 +92,7 @@ class AnalysisStore {
 }
 
 function randomId(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  return randomUUID();
 }
 
 export async function buildServer(options: ServerOptions = {}): Promise<FastifyInstance> {
@@ -100,7 +102,7 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
   const app = Fastify({
     logger: options.logger ?? false,
     bodyLimit: 40 * 1024 * 1024,
-    requestTimeout: 60_000,
+    requestTimeout: 90_000,
     connectionTimeout: 15_000,
   });
 
@@ -156,10 +158,16 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
   });
 
   app.setNotFoundHandler((request, reply) => {
+    const pathname = request.url.split("?")[0] ?? "";
+    const acceptsHtml = request.headers.accept?.includes("text/html") ?? false;
+    const hasFileExtension = path.extname(pathname) !== "";
+
     if (
       existsSync(WEB_INDEX_PATH) &&
       request.method === "GET" &&
-      !request.url.startsWith("/api")
+      !request.url.startsWith("/api") &&
+      acceptsHtml &&
+      !hasFileExtension
     ) {
       return reply.type("text/html").sendFile("index.html");
     }
@@ -292,8 +300,9 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
           part.file.resume();
         }
       } else if (part.fieldname === "config") {
-        configText =
+        const value =
           typeof part.value === "string" ? part.value : String(part.value);
+        configText = value.charCodeAt(0) === 0xfeff ? value.slice(1) : value;
       }
     }
 
@@ -378,7 +387,11 @@ export async function buildServer(options: ServerOptions = {}): Promise<FastifyI
       return { analysisId, ...result };
     } catch (error) {
       if (error instanceof AnalysisError) {
-        return reply.status(400).send({
+        const status =
+          error.code === "log_too_large" || error.code === "dbc_too_large"
+            ? 413
+            : 400;
+        return reply.status(status).send({
           error: {
             code: error.code,
             message: error.message,

@@ -51,6 +51,17 @@ describe("analyze", () => {
     expect(gear!.sampleCount).toBe(300);
   });
 
+  it("accepts UTF-8 BOM-prefixed log and DBC text", () => {
+    const result = analyze({
+      logText: "\uFEFF" + logText,
+      dbcText: "\uFEFF" + dbcText,
+    });
+
+    expect(result.statistics.totalFrames).toBe(4440);
+    expect(result.events).toHaveLength(5);
+    expect(result.warnings).toEqual([]);
+  });
+
   it("returns chartable series without interpolated points", () => {
     const result = analyze({ logText, dbcText });
 

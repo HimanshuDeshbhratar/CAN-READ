@@ -103,8 +103,10 @@ describe("buildTimeline on the demo drive", () => {
   });
 
   it("produces a deterministic summary", () => {
-    expect(timeline.summary).toContain("episode(s)");
+    expect(timeline.summary).toContain("episodes");
     expect(timeline.summary).toContain("Braking episode");
+    expect(entryOfTheme("braking")!.summary).toContain("3 related detections");
+    expect(entryOfTheme("drivetrain")!.summary).toBe("Detected at t=10 s.");
     expect(buildTimeline(events).summary).toBe(timeline.summary);
     expect(timeline.statistics.totalEvents).toBe(events.length);
     expect(timeline.statistics.groupedEvents).toBe(events.length);
